@@ -1,0 +1,31 @@
+# Container Yard Relocation Optimizer
+
+A lightweight, dependency-free decision-support simulator for the **Container Relocation Problem (CRP)** built with vanilla HTML, CSS, and SVG. It compares Naive, Heuristic, and exact BFS (Optimal) relocation policies, visualizes step-by-step stack transitions, and estimates crane time and hourly cost savings on low-end hardware.
+
+## Features
+
+- **Core Stacking Model:** Configurable stack count (`N`), height cap (`H`), container categories (`dry`, `reefer`, `hazmat`), weight classes (`light`, `medium`, `heavy`), optional weight-stacking rule, and automatic retrieval when the next target container reaches the top.
+- **Reproducible Seeded Scenarios:** Deterministic PRNG (`Mulberry32`) with bounded feasibility checking for repeatable inspection.
+- **Solvers:**
+  - **Naive:** Relocates each blocking top container to the nearest legal stack by index distance.
+  - **Heuristic:** Prefers a legal non-empty destination stack whose top container has the latest pickup order (breaking ties by lowest index), using an empty stack only when needed.
+  - **Optimal (BFS):** Breadth-first search with canonical state deduplication on small instances (`<= 8` containers, `N <= 4`, `H <= 3`) under state and runtime bounds.
+- **Interactive 2.5D SVG & Side-by-Side Replay:** Manual stack interaction alongside synchronized play, pause, step, and speed controls across solvers.
+- **Chunked Benchmarks, Cost Estimator & CSV Export:** Non-blocking batch runs (`1,000` standard `6×4` and `200` small `4×3` scenarios), SVG bar charts, crane time/cost savings calculator, CSV export, print styles, dark/light themes, and English/Arabic (`LTR`/`RTL`) support.
+
+## Local Usage
+
+1. Place `index.html`, `style.css`, and `app.js` in a single directory.
+2. Open `index.html` directly in a browser or serve the folder via any static web server.
+3. Run `runSelfCheck()` in the browser console to verify move legality and optimality invariants.
+
+## Static Deployment
+
+- **GitHub Pages:** Push the files to GitHub, open **Settings → Pages**, choose the branch and root directory (`/`), and save.
+- **Vercel:** Import the repository as a static site with no build step required.
+
+## Limitations
+
+- Uses synthetic seeded scenarios with known pickup sequences rather than stochastic arrival windows or live terminal data.
+- Models stack caps and relocation counts directly without multi-crane scheduling or aisle congestion dynamics.
+- Exact BFS is restricted to small instances due to exponential state-space growth.
