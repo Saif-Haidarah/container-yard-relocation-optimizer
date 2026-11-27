@@ -713,6 +713,35 @@ function runSelfCheck(options = {}) {
     issues
   };
 }
+function debugSeed(seed = 42) {
+  const sizeKey = document.getElementById("yardSizeSelect")?.value || "small";
+  const enforceWeightRule = Boolean(document.getElementById("weightRuleToggle")?.checked);
+  const dims = sizeKey === "main" ? { N: 6, H: 4 } : { N: 4, H: 3 };
+  const gen = generateScenario(Number(seed), { ...dims, enforceWeightRule });
+
+  if (!gen.scenario) {
+    console.warn(`Seed ${seed}: no feasible scenario generated.`);
+    return null;
+  }
+
+  const formatMoves = (moves) =>
+    moves.map((m) => `${m.from} -> ${m.to} | #${m.pickupOrder}`).join("\n  ") || "(none)";
+
+  const naive = solveNaive(gen.scenario);
+  const heuristic = solveHeuristic(gen.scenario);
+  const optimal = solveOptimal(gen.scenario);
+
+  console.group(`debugSeed(${seed}) [${dims.N}x${dims.H}, weightRule=${enforceWeightRule}]`);
+  console.log("Initial stacks:", gen.scenario.stacks.map((st, idx) =>
+    `S${idx + 1}: [${st.map((c) => `#${c.pickupOrder}(${c.weightClass[0].toUpperCase()})`).join(", ")}]`
+  ).join(" | "));
+  console.log(`Naive (${naive.status}, ${naive.relocations} moves):\n  ${formatMoves(naive.moves)}`);
+  console.log(`Heuristic (${heuristic.status}, ${heuristic.relocations} moves):\n  ${formatMoves(heuristic.moves)}`);
+  console.log(`Optimal (${optimal.status}, ${optimal.relocations} moves):\n  ${formatMoves(optimal.moves)}`);
+  console.groupEnd();
+
+  return { scenario: gen.scenario, naive, heuristic, optimal };
+}
 // ============================================================
 // Stage 3: i18n, Theme Toggle, Lightweight 2.5D SVG Renderer & Manual Mode
 // ============================================================
