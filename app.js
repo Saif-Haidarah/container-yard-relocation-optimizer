@@ -939,95 +939,53 @@ function weightShortLabel(weightClass) {
 /**
  * Renders the yard stacks using lightweight SVG with subtle 2.5D bevels.
  */
-function renderYardSvg(containerEl, state, options = {}) {
-  if (!containerEl || !state) return;
-
-  const N = state.stacks.length;
-  const H = options.H || 4;
-  const selectedStack = options.selectedStack ?? null;
-  const interactive = Boolean(options.interactive);
-
-  const boxW = 68;
-  const boxH = 34;
-  const depthX = 7;
-  const depthY = 6;
-  const gapX = 18;
-  const gapY = 6;
-  const padX = 24;
-  const padTop = 26;
+function renderYardSvg(containerEl, stacks, H, options = {}) {
+  if (!containerEl) return;
+  const N = stacks.length;
+  const colW = 72;
+  const gap = 14;
+  const slotH = 32;
+  const padX = 18;
+  const padTop = 16;
   const padBottom = 30;
+  const width = padX * 2 + N * colW + (N - 1) * gap;
+  const height = padTop + H * slotH + padBottom;
 
-  const totalW = padX * 2 + N * boxW + (N - 1) * gapX + depthX;
-  const totalH = padTop + H * (boxH + gapY) + padBottom;
+  const colors = {
+    dry: "#2563eb",
+    reefer: "#0d9488",
+    hazmat: "#d97706"
+  };
 
-  let nextPos = null;
-  for (let s = 0; s < N; s++) {
-    for (let d = 0; d < state.stacks[s].length; d++) {
-      if (state.stacks[s][d].pickupOrder === state.nextNeeded) {
-        nextPos = { s, d };
-      }
-    }
-  }
-
-  let svg = `<svg viewBox="0 0 ${totalW} ${totalH}" xmlns="http://www.w3.org/2000/svg" class="yard-svg" role="img" aria-label="Container Yard">`;
+  let svg = `<svg class="yard-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Container yard stacks">`;
 
   for (let s = 0; s < N; s++) {
-    const stack = state.stacks[s];
-    const x = padX + s * (boxW + gapX);
-    const groundY = padTop + H * (boxH + gapY);
-    const isSelected = selectedStack === s;
+    const x = padX + s * (colW + gap);
+    const isSelected = options.selectedStack === s;
 
-    const ariaText = t("stackAria", { index: s + 1, count: stack.length, max: H });
-    const interactiveAttrs = interactive
-      ? `tabindex="0" role="button" aria-label="${ariaText}" style="cursor:pointer;"`
-      : "";
+    svg += `<g data-stack-idx="${s}" tabindex="${options.interactive ? 0 : -1}" style="cursor:${options.interactive ? "pointer" : "default"}">`;
+    svg += `<rect x="${x - 3}" y="${padTop - 3}" width="${colW + 6}" height="${H * slotH + 6}" rx="6" fill="none" stroke="${isSelected ? "#facc15" : "transparent"}" stroke-width="2"/>`;
 
-    svg += `<g data-stack-idx="${s}" ${interactiveAttrs}>`;
-
-    // Hit area & subtle stack slot guide
-    svg += `<rect x="${x - 3}" y="${padTop - 8}" width="${boxW + depthX + 6}" height="${groundY - padTop + 28}" rx="8" fill="${isSelected ? "rgba(59,130,246,0.14)" : "transparent"}" stroke="${isSelected ? "#3b82f6" : "transparent"}" stroke-width="1.5" />`;
-
-    // Empty slot outlines
-    for (let slot = 0; slot < H; slot++) {
-      const slotY = groundY - (slot + 1) * (boxH + gapY) + gapY;
-      svg += `<rect x="${x}" y="${slotY}" width="${boxW}" height="${boxH}" rx="4" fill="none" stroke="var(--border)" stroke-dasharray="3 3" stroke-width="1" opacity="0.55" />`;
+    for (let level = 0; level < H; level++) {
+      const y = padTop + (H - 1 - level) * slotH;
+      svg += `<rect x="${x}" y="${y}" width="${colW}" height="${slotH - 4}" rx="4" fill="none" stroke="var(--border)" stroke-dasharray="3 3"/>`;
     }
 
-    // Ground rail
-    svg += `<line x1="${x - 2}" y1="${groundY + 2}" x2="${x + boxW + depthX}" y2="${groundY + 2}" stroke="var(--border)" stroke-width="2.5" />`;
-    svg += `<text x="${x + boxW / 2}" y="${groundY + 20}" text-anchor="middle" fill="var(--text-muted)" font-size="11" font-weight="600">S${s + 1}</text>`;
+    stacks[s].forEach((c, level) => {
+      const y = padTop + (H - 1 - level) * slotH;
+      const isNext = c.pickupOrder === options.nextNeeded;
+      const fill = colors[c.containerType] || colors.dry;
+      svg += `<rect x="${x + 1}" y="${y + 1}" width="${colW - 2}" height="${slotH - 6}" rx="4" fill="${fill}" stroke="${isNext ? "#facc15" : "none"}" stroke-width="${isNext ? 2.5 : 0}"/>`;
+      svg += `<text x="${x + colW / 2}" y="${y + (slotH - 4) / 2 + 4}" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="700">#${c.pickupOrder} ${c.weightClass[0].toUpperCase()}</text>`;
+    });
 
-    // Containers in stack
-    for (let d = 0; d < stack.length; d++) {
-      const c = stack[d];
-      const y = groundY - (d + 1) * (boxH + gapY) + gapY;
-      const isTop = d === stack.length - 1;
-      const liftY = isSelected && isTop ? y - 6 : y;
-
-      const palette = CONTAINER_PALETTE[c.containerType] || CONTAINER_PALETTE.dry;
-      const isNext = nextPos && nextPos.s === s && nextPos.d === d;
-      const strokeColor = isNext ? "#fbbf24" : "rgba(15,23,42,0.45)";
-      const strokeWidth = isNext ? 2.5 : 1;
-
-      // Top 2.5D face
-      svg += `<polygon points="${x},${liftY} ${x + depthX},${liftY - depthY} ${x + boxW + depthX},${liftY - depthY} ${x + boxW},${liftY}" fill="${palette.top}" stroke="${strokeColor}" stroke-width="0.8" />`;
-      // Right 2.5D side face
-      svg += `<polygon points="${x + boxW},${liftY} ${x + boxW + depthX},${liftY - depthY} ${x + boxW + depthX},${liftY + boxH - depthY} ${x + boxW},${liftY + boxH}" fill="${palette.side}" stroke="${strokeColor}" stroke-width="0.8" />`;
-      // Front face
-      svg += `<rect x="${x}" y="${liftY}" width="${boxW}" height="${boxH}" rx="3" fill="${palette.front}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
-
-      // Pickup order & weight badge
-      svg += `<text x="${x + 22}" y="${liftY + boxH / 2 + 4}" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="700">#${c.pickupOrder}</text>`;
-      svg += `<text x="${x + boxW - 14}" y="${liftY + boxH / 2 + 4}" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-size="10" font-weight="600">${weightShortLabel(c.weightClass)}</text>`;
-    }
-
+    svg += `<text x="${x + colW / 2}" y="${padTop + H * slotH + 20}" text-anchor="middle" fill="var(--text-muted)" font-size="13" font-weight="700">S${s + 1}</text>`;
     svg += `</g>`;
   }
 
   svg += `</svg>`;
   containerEl.innerHTML = svg;
 }
-
 function renderYardLegend(legendEl) {
   if (!legendEl) return;
   const items = [
