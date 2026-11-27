@@ -238,73 +238,87 @@ function checkFeasibility(scenario, options = {}) {
  * @param {{ N?: number, H?: number, enforceWeightRule?: boolean, containerCount?: number, maxAttempts?: number }} [config]
  */
 function generateScenario(seed, config = {}) {
-  const N = Number.isInteger(config.N) && config.N > 1 ? config.N : 6;
-  const rules = createRules({
-    H: config.H ?? 4,
-    enforceWeightRule: Boolean(config.enforceWeightRule)
-  });
-  const maxAttempts = config.maxAttempts || 40;
-  let rejectedCount = 0;
+  const N = config.N ?? 6;
+  const H = config.H ?? 4;
+  const enforceWeightRule = Boolean(config.enforceWeightRule);
+  const maxAllowedItems = N * (H - 1);
+  const requestedCount = config.containerCount ?? Math.min(maxAllowedItems, Math.max(4, Math.floor(N * (H - 1) * 0.75)));
+  const containerCount = Math.min(requestedCount, maxAllowedItems);
+  const maxAttempts = config.maxAttempts ?? 40;
+  const rng = createRng(seed);
+  const rules = createRules({ H, enforceWeightRule });
+
+  let noFeasibleRejections = 0;
+  let stateCapRejections = 0;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const attemptSeed = ((Number(seed) >>> 0) + attempt * 7919) >>> 0;
-    const rng = createRng(attemptSeed);
-
-    const maxCapacity = N * rules.H;
-    const defaultCount = Math.max(2, Math.min(maxCapacity, Math.round(maxCapacity * 0.65)));
-    const count = config.containerCount
-      ? Math.max(1, Math.min(maxCapacity, config.containerCount))
-      : randomInt(rng, Math.max(2, Math.floor(maxCapacity * 0.45)), defaultCount);
-
-    const orders = buildPickupOrders(rng, count);
     const stacks = Array.from({ length: N }, () => []);
-
-    let placementFailed = false;
-    for (let i = 0; i < count; i++) {
-      const container = createContainer({
-        id: `C-${i + 1}`,
-        weightClass: randomPick(rng, WEIGHT_CLASSES),
-        containerType: randomPick(rng, CONTAINER_TYPES),
-        pickupOrder: orders[i]
-      });
-
-      const legalStacks = [];
-      for (let s = 0; s < N; s++) {
-        if (canPlace(stacks[s], container, rules)) {
-          legalStacks.push(s);
-        }
-      }
-
-      if (legalStacks.length === 0) {
-        placementFailed = true;
-        break;
-      }
-
-      const chosenIdx = randomPick(rng, legalStacks);
-      stacks[chosenIdx].push(container);
+    const pickupOrders = Array.from({ length: containerCount }, (_, i) => i + 1);
+    for (let i = pickupOrders.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [pickupOrders[i], pickupOrders[j]] = [pickupOrders[j], pickupOrders[i]];
     }
 
-    if (placementFailed) {
-      rejectedCount++;
+    const containers = pickupOrders.map((order, idx) => {
+      const wRoll = rng();
+      const weightClass = wRoll < 0.34 ? "heavy" : wRoll < 0.67 ? "medium" : "light";
+      const tRoll = rng();
+      const containerType = tRoll < 0.55 ? "dry" : tRoll < 0.85 ? "reefer" : "hazmat";
+      return createContainer({
+        id: `C${idx + 1}`,
+        weightClass,
+        containerType,
+        pickupOrder: order
+      });
+    });
+
+    if (enforceWeightRule) {
+      const weightRank = { heavy: 3, medium: 2, light: 1 };
+      containers.sort((a, b) => weightRank[b.weightClass] - weightRank[a.weightClass]);
+    }
+
+    let placedAll = true;
+    for (const c of containers) {
+      const validStacks = [];
+      for (let s = 0; s < N; s++) {
+        if (canPlace(stacks[s], c, rules)) validStacks.push(s);
+      }
+      if (validStacks.length === 0) {
+        placedAll = false;
+        break;
+      }
+      const chosenStack = validStacks[Math.floor(rng() * validStacks.length)];
+      stacks[chosenStack].push(c);
+    }
+
+    if (!placedAll) {
+      noFeasibleRejections++;
       continue;
     }
 
-    const scenario = {
-      seed: Number(seed),
-      effectiveSeed: attemptSeed,
-      N,
-      rules,
-      stacks
-    };
-
-    const feasibility = checkFeasibility(scenario, { maxStates: 3000 });
-    if (feasibility === "feasible") {
-      return { scenario, rejectedCount };
+    const candidate = { seed, N, rules, stacks };
+    const check = checkFeasibility(candidate, { maxStates: 4000 });
+    if (check === "feasible") {
+      return {
+        scenario: candidate,
+        attempts: attempt + 1,
+        noFeasibleRejections,
+        stateCapRejections
+      };
     }
-    rejectedCount++;
+    if (check === "limit reached") {
+      stateCapRejections++;
+    } else {
+      noFeasibleRejections++;
+    }
   }
 
-  return { scenario: null, rejectedCount };
+  return {
+    scenario: null,
+    attempts: maxAttempts,
+    noFeasibleRejections,
+    stateCapRejections
+  };
 }
 
 /**
