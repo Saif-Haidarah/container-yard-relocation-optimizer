@@ -387,60 +387,76 @@ function solveNaive(scenario) {
  * pickupOrder (least likely to block soon). Uses an empty stack only when no
  * legal non-empty stack exists. Ties are broken by lowest stack index.
  */
-function solveHeuristic(scenario) {
+function solveHeuristic(scenario, options = {}) {
+  const maxSteps = options.maxSteps ?? 500;
+  const rules = scenario.rules;
   let state = autoRetrieve(initialState(scenario.stacks)).state;
   const moves = [];
-  const moveCap = 5000;
+  let steps = 0;
 
-  while (!isSolved(state)) {
-    if (moves.length >= moveCap) {
-      return { status: "limit reached", moves, relocations: moves.length };
+  while (!isSolved(state) && steps < maxSteps) {
+    steps++;
+    const targetInfo = findNeededLocation(state);
+    if (!targetInfo) {
+      return { status: "infeasible", relocations: moves.length, moves, finalState: state };
     }
 
-    const target = locateNextNeeded(state);
-    if (!target) {
-      return { status: "infeasible", moves, relocations: moves.length };
+    const { stackIdx: fromStack } = targetInfo;
+    const blocker = state.stacks[fromStack][state.stacks[fromStack].length - 1];
+    if (!blocker) {
+      return { status: "infeasible", relocations: moves.length, moves, finalState: state };
     }
 
-    if (target.isTop) {
-      state = autoRetrieve(state).state;
-      continue;
+    const candidates = [];
+    for (let toStack = 0; toStack < state.stacks.length; toStack++) {
+      if (toStack === fromStack) continue;
+      if (!canPlace(state.stacks[toStack], blocker, rules)) continue;
+
+      const stackMin = state.stacks[toStack].length === 0
+        ? Infinity
+        : Math.min(...state.stacks[toStack].map((item) => item.pickupOrder));
+
+      candidates.push({
+        toStack,
+        stackMin,
+        isSafe: stackMin > blocker.pickupOrder
+      });
     }
 
-    const fromIdx = target.stackIdx;
-    const blocker = target.blocker;
-
-    let bestNonEmptyIdx = -1;
-    let bestLatestOrder = -Infinity;
-    let bestEmptyIdx = -1;
-
-    for (let toIdx = 0; toIdx < state.stacks.length; toIdx++) {
-      if (toIdx === fromIdx) continue;
-      const destStack = state.stacks[toIdx];
-      if (!canPlace(destStack, blocker, scenario.rules)) continue;
-
-      if (destStack.length === 0) {
-        if (bestEmptyIdx === -1 || toIdx < bestEmptyIdx) {
-          bestEmptyIdx = toIdx;
-        }
-        continue;
-      }
-
-      const topOrder = destStack[destStack.length - 1].pickupOrder;
-      if (
-        topOrder > bestLatestOrder ||
-        (topOrder === bestLatestOrder && (bestNonEmptyIdx === -1 || toIdx < bestNonEmptyIdx))
-      ) {
-        bestLatestOrder = topOrder;
-        bestNonEmptyIdx = toIdx;
-      }
+    if (candidates.length === 0) {
+      return { status: "infeasible", relocations: moves.length, moves, finalState: state };
     }
 
-    const chosenDest = bestNonEmptyIdx !== -1 ? bestNonEmptyIdx : bestEmptyIdx;
-    if (chosenDest === -1) {
-      return { status: "infeasible", moves, relocations: moves.length };
+    const safeCandidates = candidates.filter((c) => c.isSafe);
+    let chosen;
+    if (safeCandidates.length > 0) {
+      safeCandidates.sort((a, b) => (a.stackMin - b.stackMin) || (a.toStack - b.toStack));
+      chosen = safeCandidates[0];
+    } else {
+      candidates.sort((a, b) => (b.stackMin - a.stackMin) || (a.toStack - b.toStack));
+      chosen = candidates[0];
     }
 
+    const next = applyRelocation(state, fromStack, chosen.toStack, rules);
+    if (!next) {
+      return { status: "infeasible", relocations: moves.length, moves, finalState: state };
+    }
+
+    moves.push({
+      from: fromStack,
+      to: chosen.toStack,
+      containerId: blocker.id,
+      pickupOrder: blocker.pickupOrder
+    });
+    state = next;
+  }
+
+  if (!isSolved(state)) {
+    return { status: "limit reached", relocations: moves.length, moves, finalState: state };
+  }
+
+  return { status: "solved", relocations: moves.length, moves, finalState: state };
+}
     const applied = applyRelocation(state, fromIdx, chosenDest, scenario.rules);
     if (!applied) {
       return { status: "infeasible", moves, relocations: moves.length };
