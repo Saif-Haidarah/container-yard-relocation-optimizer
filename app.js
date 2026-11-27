@@ -748,23 +748,20 @@ function debugSeed(seed = 42) {
 
 const I18N = {
   en: {
-    skipToContent: "Skip to content",
-    appTitle: "Container Yard Relocation Optimizer",
-    heroTitle: "Container Yard Relocation Optimizer",
-    heroLead: "Minimize unproductive crane rehandles in port container stacks. Compare Naive, Heuristic, and Optimal policies under real stacking rules.",
-    toggleTheme: "Toggle theme",
-    switchLang: "العربية",
-    metricLabel: "Headline Metric",
-    metricPending: "—",
-    metricSub: "Run the benchmark to see results",
-    demoTitle: "Interactive Yard & Manual Mode",
-    demoDesc: "Click or press Enter on a stack to pick up its top container, then select another stack to place it. Retrieval happens automatically.",
+    pageTitle: "Container Yard Relocation Optimizer",
+    heroSub: "Containers are stacked vertically; when the next container needed is buried underneath, every extra crane move wastes time and fuel.",
+    howItWorks: "How it works: 1) Pick a scenario  2) Compare methods  3) See moves and cost",
+    heroLabel: "Headline Metric",
+    heroBeforeRun: "Run the benchmark to see results",
+    heroAfterRun: "{pct}% relocation reduction vs Naive ({solved} solved scenarios)",
+    yardTitle: "Interactive Yard & Manual Mode",
+    yardDesc: "Click or press Enter on a stack to pick up its top container, then select another stack to place it. Retrieval happens automatically.",
     seedLabel: "Seed",
     yardSizeLabel: "Yard Size",
-    sizeStandard: "Standard (6 × 4)",
     sizeSmall: "Small (4 × 3 — Optimal Ready)",
+    sizeMain: "Standard (6 × 4)",
     weightRuleLabel: "Weight Rule (No Heavy on Light)",
-    btnGenerate: "Load Seed",
+    btnLoadSeed: "Load Seed",
     btnNewScenario: "New Random",
     btnReset: "Reset",
     btnSolveNaive: "Solve: Naive",
@@ -776,99 +773,140 @@ const I18N = {
     legendReefer: "Reefer",
     legendHazmat: "Hazmat",
     legendNext: "Next Needed",
-    weightLight: "L",
-    weightMedium: "M",
-    weightHeavy: "H",
-    statusReady: "Next needed: #{next}. Select a stack to pick up its top container.",
-    statusSelected: "Selected stack S{stack} (container #{order}, {weight}). Choose a destination stack.",
-    statusEmptyStack: "Stack S{stack} is empty. Nothing to pick up.",
-    statusIllegalMove: "Illegal move: cannot place container #{order} on stack S{stack}.",
-    statusSolved: "Solved! All containers retrieved in {count} relocations.",
-    statusAutoSolved: "{solver} solved the scenario in {count} relocations.",
-    statusSolverLimit: "{solver}: {reason}.",
-    statusGenFailed: "Could not generate a feasible scenario for this seed. Try another seed.",
-    stackAria: "Stack {index}, {count} of {max} containers"
+    statusPick: "Next needed: #{n}. Select a stack to pick up its top container.",
+    statusSelected: "Selected stack S{s} (#{n}). Choose destination stack.",
+    statusSolved: "Solved! All containers retrieved in {moves} relocations.",
+    statusIllegal: "Illegal move: violates height limit or weight stacking rule.",
+    replayTitle: "Side-by-Side Replay",
+    replayDesc: "Step through identical initial yard states across Naive, Heuristic, and Optimal solvers.",
+    replayPlay: "Play",
+    replayPause: "Pause",
+    replayStep: "Step",
+    replayReset: "Reset",
+    replaySpeed: "Speed:",
+    replayStepLabel: "Step:",
+    replayMoves: "Moves:",
+    replayRunning: "In Progress",
+    replayDoneBadge: "All containers retrieved",
+    replayLimitBadge: "Limit reached",
+    benchTitle: "Benchmarks & Crane Cost Estimator",
+    benchDesc: "Run non-blocking batch experiments to measure average relocations, optimality gap, crane time, and hourly cost impact.",
+    runMain: "Run Main Benchmark (1,000 × 6×4)",
+    runSmall: "Run Small Benchmark (200 × 4×3 + Optimal)",
+    naiveAvg: "Naive Avg",
+    heuristicAvg: "Heuristic Avg",
+    reductionLabel: "Reduction vs Naive",
+    worseThanNaive: "worse than Naive",
+    optimalAvg: "Optimal Avg",
+    optimalityGap: "Gap to Optimal",
+    solvedCount: "Solved Scenarios",
+    rejectedNoFeasible: "Rejected (No Feasible)",
+    rejectedStateCap: "Rejected (State Cap)",
+    worseSummary: "Scenarios where Heuristic lost to Naive ({count})",
+    chartTitle: "Average Relocations per Scenario",
+    costTitle: "Crane Time & Cost Savings",
+    costMinLabel: "Minutes per Relocation",
+    costHourlyLabel: "Crane Hourly Cost ($)",
+    costPerScenario: "Per scenario: {moves} relocations saved ≈ {mins} min ≈ ${cost}",
+    costTotal: "Across {n} scenarios: {moves} relocations saved ≈ {mins} min ≈ ${cost}",
+    exportCsv: "Export CSV",
+    printReport: "Print Report",
+    caseTitle: "Case Study & Model Scope",
+    caseSub: "Empirical findings and explicit modeling assumptions updated automatically after each benchmark run."
   },
   ar: {
-    skipToContent: "تجاوز إلى المحتوى",
-    appTitle: "محسّن مناولة الحاويات في الموانئ",
-    heroTitle: "محسّن مناولة الحاويات في الموانئ",
-    heroLead: "قلّل حركات المناولة غير المنتجة في ساحات الحاويات. قارن بين السياسة الساذجة والاستدلالية والمثلى تحت قيود التكديس الفعلية.",
-    toggleTheme: "تبديل المظهر",
-    switchLang: "English",
-    metricLabel: "المؤشر الرئيسي",
-    metricPending: "—",
-    metricSub: "شغّل القياس لرؤية النتائج",
-    demoTitle: "الساحة التفاعلية والوضع اليدوي",
-    demoDesc: "انقر على عمود لالتقاط الحاوية العلوية، ثم اختر عموداً آخر لوضعها. يتم سحب الحاوية المطلوبة تلقائياً عند وصولها للقمة.",
+    pageTitle: "محسّن مناولة الحاويات في الموانئ",
+    heroSub: "تُرصّ الحاويات فوق بعضها؛ وعندما تكون الحاوية المطلوبة مدفونة بالأسفل، تستهلك كل حركة رافعة إضافية وقتاً ووقوداً.",
+    howItWorks: "طريقة العمل: 1) اختر سيناريو  2) قارن الطرق  3) شاهد الحركات والتكلفة",
+    heroLabel: "المؤشر الرئيسي",
+    heroBeforeRun: "شغّل القياس لعرض النتائج",
+    heroAfterRun: "تخفيض المناورات بنسبة {pct}% مقارنة بالحل Naive ({solved} سيناريو محلول)",
+    yardTitle: "الساحة التفاعلية والوضع اليدوي",
+    yardDesc: "انقر على عمود لالتقاط الحاوية العلوية، ثم اختر عموداً آخر لوضعها. يتم سحب الحاوية المطلوبة تلقائياً عند وصولها للقمة.",
     seedLabel: "البذرة (Seed)",
     yardSizeLabel: "حجم الساحة",
-    sizeStandard: "قياسي (6 × 4)",
-    sizeSmall: "مصغّر (4 × 3 — يدعم الحل الأمثل)",
-    weightRuleLabel: "قاعدة الوزن (منع الثقيل فوق الأخف)",
-    btnGenerate: "توليد بالبذرة",
-    btnNewScenario: "سيناريو جديد",
+    sizeSmall: "صغير (4 × 3 — يدعم الحل Optimal)",
+    sizeMain: "قياسي (6 × 4)",
+    weightRuleLabel: "قاعدة الوزن (منع الثقيل فوق الخفيف)",
+    btnLoadSeed: "توليد بالبذرة",
+    btnNewScenario: "سيناريو عشوائي",
     btnReset: "إعادة ضبط",
-    btnSolveNaive: "حل: ساذج",
-    btnSolveHeuristic: "حل: استدلالي",
-    btnSolveOptimal: "حل: أمثل",
+    btnSolveNaive: "حل: Naive",
+    btnSolveHeuristic: "حل: Heuristic",
+    btnSolveOptimal: "حل: Optimal",
     relocationsLabel: "المناورات",
     nextNeededLabel: "السحب التالي",
-    legendDry: "جافة (Dry)",
+    legendDry: "عادية (Dry)",
     legendReefer: "مبردة (Reefer)",
     legendHazmat: "خطرة (Hazmat)",
     legendNext: "المطلوبة تالياً",
-    weightLight: "خفيف",
-    weightMedium: "متوسط",
-    weightHeavy: "ثقيل",
-    statusReady: "المطلوب تالياً: #{next}. اختر عموداً لالتقاط حاويته العلوية.",
-    statusSelected: "تم تحديد العمود S{stack} (الحاوية #{order}، {weight}). اختر عموداً لوضعها.",
-    statusEmptyStack: "العمود S{stack} فارغ. لا توجد حاوية لالتقاطها.",
-    statusIllegalMove: "حركة غير قانونية: لا يمكن وضع الحاوية #{order} فوق العمود S{stack}.",
-    statusSolved: "تم الحل! سُحبت جميع الحاويات خلال {count} مناورة.",
-    statusAutoSolved: "أنهى الحل ({solver}) السيناريو بـ {count} مناورة.",
-    statusSolverLimit: "الحل ({solver}): {reason}.",
-    statusGenFailed: "تعذّر توليد سيناريو قابل للحل بهذه البذرة. جرّب بذرة أخرى.",
-    stackAria: "العمود {index}، يحتوي {count} من أصل {max} حاويات"
+    statusPick: "المطلوب تالياً: #{n}. اختر عموداً لالتقاط حاويته العلوية.",
+    statusSelected: "تم تحديد العمود S{s} (#{n}). اختر العمود الوجهة.",
+    statusSolved: "اكتمل الحل! تم سحب جميع الحاويات خلال {moves} مناورات.",
+    statusIllegal: "حركة غير مسموحة: تخالف حد الارتفاع أو قاعدة تكديس الأوزان.",
+    replayTitle: "العرض المتزامن للمحلّات",
+    replayDesc: "تتبّع نفس حالة الساحة الابتدائية خطوة بخطوة عبر Naive و Heuristic و Optimal.",
+    replayPlay: "تشغيل",
+    replayPause: "إيقاف مؤقت",
+    replayStep: "خطوة",
+    replayReset: "إعادة",
+    replaySpeed: "السرعة:",
+    replayStepLabel: "الخطوة:",
+    replayMoves: "الحركات:",
+    replayRunning: "قيد التنفيذ",
+    replayDoneBadge: "تم سحب جميع الحاويات",
+    replayLimitBadge: "بلغ حد البحث",
+    benchTitle: "اختبارات الأداء وحاسبة تكلفة الرافعة",
+    benchDesc: "تشغيل تجارب دفعية غير معطّلة لقياس متوسط المناورات، الفجوة عن الحل الأمثل، زمن الرافعة، والأثر المالي.",
+    runMain: "تشغيل القياس الرئيسي (1,000 × 6×4)",
+    runSmall: "تشغيل القياس المصغّر (200 × 4×3 + Optimal)",
+    naiveAvg: "متوسط Naive",
+    heuristicAvg: "متوسط Heuristic",
+    reductionLabel: "نسبة التخفيض",
+    worseThanNaive: "أسوأ من Naive",
+    optimalAvg: "متوسط Optimal",
+    optimalityGap: "الفجوة عن Optimal",
+    solvedCount: "السيناريوهات المحلولة",
+    rejectedNoFeasible: "مرفوض (لا يوجد حل مجدٍ)",
+    rejectedStateCap: "مرفوض (بلغ حد الحالات)",
+    worseSummary: "السيناريوهات التي تفوّق فيها Naive على Heuristic ({count})",
+    chartTitle: "متوسط المناورات لكل سيناريو",
+    costTitle: "توفير زمن وتكلفة الرافعة",
+    costMinLabel: "دقائق لكل مناورة",
+    costHourlyLabel: "تكلفة ساعة الرافعة ($)",
+    costPerScenario: "لكل سيناريو: توفير {moves} مناورة ≈ {mins} دقيقة ≈ ${cost}",
+    costTotal: "عبر {n} سيناريو: توفير {moves} مناورة ≈ {mins} دقيقة ≈ ${cost}",
+    exportCsv: "تصدير CSV",
+    printReport: "طباعة التقرير",
+    caseTitle: "دراسة الحالة ونطاق النموذج",
+    caseSub: "النتائج التجريبية وافتراضات النمذجة الصريحة تتحدث تلقائياً بعد كل قياس."
   }
 };
 
-let currentLang = "en";
-
 function t(key, vars = {}) {
-  const dict = I18N[currentLang] || I18N.en;
-  let str = dict[key] !== undefined ? dict[key] : (I18N.en[key] || key);
+  const lang = document.documentElement.lang === "ar" ? "ar" : "en";
+  let str = I18N[lang][key] || I18N.en[key] || key;
   for (const [k, v] of Object.entries(vars)) {
-    str = str.replaceAll(`{${k}}`, String(v));
+    str = str.replace(`{${k}}`, String(v));
   }
   return str;
 }
 
 function applyLanguage(lang) {
-  currentLang = I18N[lang] ? lang : "en";
-  document.documentElement.lang = currentLang;
-  document.documentElement.dir = currentLang === "ar" ? "rtl" : "ltr";
+  const activeLang = lang === "ar" ? "ar" : "en";
+  document.documentElement.lang = activeLang;
+  document.documentElement.dir = activeLang === "ar" ? "rtl" : "ltr";
+
+  const langBtn = document.getElementById("langToggle");
+  if (langBtn) langBtn.textContent = activeLang === "ar" ? "English" : "العربية";
 
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (key) el.textContent = t(key);
   });
 
-  document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
-    const key = el.getAttribute("data-i18n-aria");
-    if (key) el.setAttribute("aria-label", t(key));
-  });
-
-  const langBtn = document.getElementById("langToggle");
-  if (langBtn) langBtn.textContent = t("switchLang");
-
-  try {
-    localStorage.setItem("yard_lang", currentLang);
-  } catch (_) {}
-
-  if (typeof renderManualDemo === "function" && manualDemo.scenario) {
-    renderManualDemo();
-  }
+  renderAllDynamicSections();
+}
 }
 
 function applyTheme(theme) {
